@@ -1,3 +1,5 @@
+#! /usr/bin/python3
+
 import RPi.GPIO as GPIO
 import time
 import datetime
@@ -102,13 +104,12 @@ def water_watchdog(
     while True:
 
         # check water level of reservoir
-        # TODO: dont make while, rather "if"
-        while not check_water_level(GPIO_reservoir_sensor, GPIO_reservoir_ref):
+        if not check_water_level(GPIO_reservoir_sensor, GPIO_reservoir_ref):
             if check_off_time():
                 alarm(GPIO_alarm)
             else:
                 logger.debug("silent alarm")
-            time.sleep(10)
+            time.sleep(5)
 
         # check water level of tree
         if not check_water_level(GPIO_tree_sensor, GPIO_tree_ref):
