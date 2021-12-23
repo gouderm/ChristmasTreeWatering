@@ -1,11 +1,27 @@
 import RPi.GPIO as GPIO
 import time
 import datetime
+import sys
+import os
+import logging
+
+log_format = '%(asctime)s | %(message)s'
+
+log_file_path = os.path.dirname(os.path.realpath(__file__)) + "/log.txt"
+logging.basicConfig(filename=log_file_path, format=log_format, filemode='a')
+
+# logging.basicConfig(stream=sys.stdout, format=log_format)
+  
+logger=logging.getLogger() 
+logger.setLevel(logging.DEBUG)
+
 
 
 def init_gpio(GPIO_tree_sensor, GPIO_tree_ref, 
         GPIO_reservoir_sensor, GPIO_reservoir_ref,
         GPIO_alarm, GPIO_pump):
+
+    logger.debug("initializing GPIO")
 
     GPIO.setup(GPIO_tree_sensor, GPIO.IN)
     GPIO.setup(GPIO_tree_ref, GPIO.OUT, initial=GPIO.LOW)
@@ -19,16 +35,20 @@ def init_gpio(GPIO_tree_sensor, GPIO_tree_ref,
 
 def check_water_level(GPIO_sensor, GPIO_ref):
     # returns False if low water level is detected
+    logger.debug("check water level: Sensor-Pin {}".format(GPIO_sensor))
 
     GPIO.output(GPIO_ref, GPIO.HIGH)
     time.sleep(0.1) # wait 100ms
     water_level = GPIO.input(GPIO_sensor)
     GPIO.output(GPIO_ref, GPIO.LOW)
 
+    logger.debug("water level high" if water_level else "water level low")
+
     return water_level
 
 
 def pump_water(GPIO_pump, duration_s):
+    logger.debug("pump water")
 
     GPIO.output(GPIO_pump, GPIO.HIGH)
     time.sleep(duration_s)
@@ -40,7 +60,7 @@ def check_off_time():
 
     current_time = datetime.datetime.now().time()
 
-    if current_time < datetime.time(07,0,0) 
+    if current_time < datetime.time(7,0,0):
         return False
 
     if current_time > datetime.time(21,30,0):
@@ -52,17 +72,19 @@ def check_off_time():
 def alarm(GPIO_alarm, panic=False):
 
     if not panic:
+        logger.debug("alarm (no panic)")
         for _ in range(5):
-            GPIO.output(GPIO_alarm, GPIO.HIGH)
-            time.sleep(0.2)
             GPIO.output(GPIO_alarm, GPIO.LOW)
+            time.sleep(0.2)
+            GPIO.output(GPIO_alarm, GPIO.HIGH)
             time.sleep(0.8)
 
     if panic:
+        logger.debug("alarm (panic)")
         for _ in range(50):
-            GPIO.output(GPIO_alarm, GPIO.HIGH)
-            time.sleep(0.1)
             GPIO.output(GPIO_alarm, GPIO.LOW)
+            time.sleep(0.1)
+            GPIO.output(GPIO_alarm, GPIO.HIGH)
             time.sleep(0.1)
             
 
@@ -73,14 +95,19 @@ def water_watchdog(
         GPIO_alarm, GPIO_pump,
         pump_duration=7):
 
+    logger.debug("start water watchdog")
+
     pump_ctr = 0
 
     while True:
 
         # check water level of reservoir
+        # TODO: dont make while, rather "if"
         while not check_water_level(GPIO_reservoir_sensor, GPIO_reservoir_ref):
             if check_off_time():
-                alarm(GPIO_reservoir_sensor, GPIO_reservoir_ref, GPIO_alarm)
+                alarm(GPIO_alarm)
+            else:
+                logger.debug("silent alarm")
             time.sleep(10)
 
         # check water level of tree
@@ -99,40 +126,48 @@ def water_watchdog(
 
 if __name__ == "__main__":
 
-    GPIO_tree_sensor = 
-    GPIO_tree_ref = 
-    GPIO_reservoir_sensor = 
-    GPIO_reservoir_ref = 
-    GPIO_alarm =
-    GPIO_pump = 
+    try:
+        GPIO.setmode(GPIO.BCM)
 
-    init_gpio(
-            GPIO_tree_sensor,
-            GPIO_tree_ref, 
-            GPIO_reservoir_sensor,
-            GPIO_reservoir_ref,
-            GPIO_alarm,
-            GPIO_pump
-        )
+        GPIO_tree_sensor = 2
+        GPIO_tree_ref = 4
+        GPIO_reservoir_sensor = 27
+        GPIO_reservoir_ref = 17
+        GPIO_alarm = 3
+        GPIO_pump = 22
 
-    # startup beep
-    for _ in range(2):
-        GPIO.output(GPIO_alarm, GPIO.HIGH)
-        time.sleep(0.1)
-        GPIO.output(GPIO_alarm, GPIO.LOW)
-        time.sleep(0.1)
+        init_gpio(
+                GPIO_tree_sensor,
+                GPIO_tree_ref, 
+                GPIO_reservoir_sensor,
+                GPIO_reservoir_ref,
+                GPIO_alarm,
+                GPIO_pump
+            )
 
-    time.sleep(2)
+        # startup beep
+        logger.debug("Startup Beep")
+        for _ in range(5):
+            GPIO.output(GPIO_alarm, GPIO.LOW)
+            time.sleep(0.05)
+            GPIO.output(GPIO_alarm, GPIO.HIGH)
+            time.sleep(0.05)
 
-    water_watchdog(
-            GPIO_tree_sensor,
-            GPIO_tree_ref,
-            GPIO_reservoir_sensor,
-            GPIO_reservoir_ref,
-            GPIO_alarm,
-            GPIO_pump,
-            pump_duration = 7
-        )
+        time.sleep(2)
+
+        water_watchdog(
+                GPIO_tree_sensor,
+                GPIO_tree_ref,
+                GPIO_reservoir_sensor,
+                GPIO_reservoir_ref,
+                GPIO_alarm,
+                GPIO_pump,
+                pump_duration = 7
+            )
 
 
+    finally:
+
+        logger.debug("Terminating")
+        GPIO.cleanup()
 
