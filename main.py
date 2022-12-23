@@ -7,10 +7,10 @@ import sys
 import os
 import logging
 import telepot
-import urllib2
+import urllib.request
 
 log_format = '%(asctime)s | %(message)s'
-TOKEN = "SECRET TELEGRAM TOKEN"
+TOKEN = "5923304712:AAFVclXSak_LEjg1N44drAxMaVdDaVOyOkQ"
 
 log_file_path = os.path.dirname(os.path.realpath(__file__)) + "/log.txt"
 logging.basicConfig(filename=log_file_path, format=log_format, filemode='a')
@@ -23,17 +23,20 @@ logger.setLevel(logging.DEBUG)
 def wait_for_internet_connection():
     while True:
         try:
-            response = urllib2.urlopen('http://google.de',timeout=1)
+            urllib.request.urlopen('http://google.de')
             return
-        except urllib2.URLError:
+        except:
             pass
+        time.sleep(1)
 
-def broadcast(msg, bot=bot, chat_ids=ids):
+
+def broadcast(msg, bot, chat_ids):
     for id in chat_ids:
         try:
             bot.sendMessage(id, msg)
         except:
             logger.error(f"failed to broadcast")
+
 
 def init_gpio(GPIO_tree_sensor, GPIO_tree_ref, 
         GPIO_reservoir_sensor, GPIO_reservoir_ref,
@@ -111,7 +114,7 @@ def water_watchdog(
         GPIO_tree_sensor, GPIO_tree_ref,
         GPIO_reservoir_sensor, GPIO_reservoir_ref,
         GPIO_alarm, GPIO_pump,
-        pump_duration=7):
+        pump_duration=7, telegram_bot=None, chat_ids=[]):
 
     logger.debug("start water watchdog")
 
@@ -121,7 +124,7 @@ def water_watchdog(
 
         # check water level of reservoir
         if not check_water_level(GPIO_reservoir_sensor, GPIO_reservoir_ref):
-            broadcast("Waterlevel in Reservoir low!")
+            broadcast("Waterlevel in Reservoir low!", bot=telegram_bot, chat_ids=chat_ids)
             if check_off_time():
                 alarm(GPIO_alarm)
             else:
@@ -133,8 +136,8 @@ def water_watchdog(
             pump_ctr += 1
             if pump_ctr < 3:
                 pump_water(GPIO_pump, pump_duration)
-            else: # don't activate pump more than 3 consecutive times
-                broadcast("Water in Tree-pot does not change! Tried to pump 3-times.")
+            else: # don't activate pump more than 2 consecutive times
+                broadcast("Water in Tree-pot does not change! Tried to pump 2-times.", bot=telegram_bot, chat_ids=chat_ids)
                 alarm(GPIO_alarm, panic=True)
         else:
             pump_ctr = 0
@@ -148,18 +151,16 @@ if __name__ == "__main__":
     logger.info("waiting for internet connection")
     wait_for_internet_connection()
     logger.info("connected to internet")
-
-    broadcast("ChristmasTree Up and Running!")
-
-
-
     bot = telepot.Bot(TOKEN)
     ids = []
-
     for msg in bot.getUpdates():
         if (_id := msg.get("message",{}).get("chat",{}).get("id", None)) != None:
             if _id not in ids:
                 ids.append(_id)
+
+    time.sleep(2)
+    print('broadcast')
+    broadcast("ChristmasTree Up and Running!", bot=bot, chat_ids=ids)
 
     try:
         GPIO.setmode(GPIO.BCM)
@@ -197,7 +198,9 @@ if __name__ == "__main__":
                 GPIO_reservoir_ref,
                 GPIO_alarm,
                 GPIO_pump,
-                pump_duration = 7
+                pump_duration = 7,
+                telegram_bot = bot,
+                chat_ids = ids, 
             )
 
 
