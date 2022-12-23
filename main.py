@@ -30,7 +30,10 @@ for msg in bot.getUpdates():
 
 def broadcast(msg, bot=bot, chat_ids=ids):
     for id in chat_ids:
-        bot.sendMessage(id, msg)
+        try:
+            bot.sendMessage(id, msg)
+        except:
+            logger.error(f"failed to broadcast")
 
 
 broadcast("ChristmasTree Up and Running!")
