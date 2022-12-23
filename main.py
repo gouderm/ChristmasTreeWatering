@@ -7,8 +7,10 @@ import sys
 import os
 import logging
 import telepot
+import urllib2
 
 log_format = '%(asctime)s | %(message)s'
+TOKEN = "SECRET TELEGRAM TOKEN"
 
 log_file_path = os.path.dirname(os.path.realpath(__file__)) + "/log.txt"
 logging.basicConfig(filename=log_file_path, format=log_format, filemode='a')
@@ -18,15 +20,13 @@ logging.basicConfig(filename=log_file_path, format=log_format, filemode='a')
 logger=logging.getLogger() 
 logger.setLevel(logging.DEBUG)
 
-TOKEN = "SECRET TELEGRAM TOKEN"
-
-bot = telepot.Bot(TOKEN)
-ids = []
-
-for msg in bot.getUpdates():
-    if (_id := msg.get("message",{}).get("chat",{}).get("id", None)) != None:
-        if _id not in ids:
-            ids.append(_id)
+def wait_for_internet_connection():
+    while True:
+        try:
+            response = urllib2.urlopen('http://google.de',timeout=1)
+            return
+        except urllib2.URLError:
+            pass
 
 def broadcast(msg, bot=bot, chat_ids=ids):
     for id in chat_ids:
@@ -34,10 +34,6 @@ def broadcast(msg, bot=bot, chat_ids=ids):
             bot.sendMessage(id, msg)
         except:
             logger.error(f"failed to broadcast")
-
-
-broadcast("ChristmasTree Up and Running!")
-
 
 def init_gpio(GPIO_tree_sensor, GPIO_tree_ref, 
         GPIO_reservoir_sensor, GPIO_reservoir_ref,
@@ -148,6 +144,22 @@ def water_watchdog(
 
 
 if __name__ == "__main__":
+
+    logger.info("waiting for internet connection")
+    wait_for_internet_connection()
+    logger.info("connected to internet")
+
+    broadcast("ChristmasTree Up and Running!")
+
+
+
+    bot = telepot.Bot(TOKEN)
+    ids = []
+
+    for msg in bot.getUpdates():
+        if (_id := msg.get("message",{}).get("chat",{}).get("id", None)) != None:
+            if _id not in ids:
+                ids.append(_id)
 
     try:
         GPIO.setmode(GPIO.BCM)
