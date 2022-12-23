@@ -25,6 +25,11 @@ If after 3 times of consecutive pumping the water-level of the christmas-tree is
 
 It is recommended to use an OpAmp circuit in [buffer](https://en.wikipedia.org/wiki/Buffer_amplifier)-configuration for the `GPIO_reservoir_sensor`-Pin and `GPIO_tree_sensor`-Pin, as the internal resistance of the RaspberryPi can be too small. Furthermore, a Pull-down resisitor (eg. 68kΩ) should be used for the input-pins of the OpAmp.
 
+Sample Circuit:
+| 1                   | 2                              | 3        | 4     | 5     | 6   | 7     | 8        | 9    | 10 |
+|---------------------|--------------------------------|----------|-------|-------|-----|-------|----------|------|----|
+| Vcc (5V)<br>(OpAmp) | Vcc (3.3V)<br>(buzzer, relais) | Sensor 1 | Alarm | Ref 1 | GND | Ref 2 | Sensor 2 | Pump | NA |
+
 ## Usage
 
 Configure the GPIO-pins and put script into autostart of RaspberryPi.
