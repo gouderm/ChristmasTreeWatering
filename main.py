@@ -6,6 +6,7 @@ import datetime
 import sys
 import os
 import logging
+import telepot
 
 log_format = '%(asctime)s | %(message)s'
 
@@ -17,11 +18,27 @@ logging.basicConfig(filename=log_file_path, format=log_format, filemode='a')
 logger=logging.getLogger() 
 logger.setLevel(logging.DEBUG)
 
+TOKEN = "SECRET TELEGRAM TOKEN"
+
+bot = telepot.Bot(TOKEN)
+ids = []
+
+for msg in bot.getUpdates():
+    if (_id := msg.get("message",{}).get("chat",{}).get("id", None)) != None:
+        if _id not in ids:
+            ids.append(_id)
+
+def broadcast(msg, bot=bot, chat_ids=ids):
+    for id in chat_ids:
+        bot.sendMessage(id, msg)
+
+
+broadcast("ChristmasTree Up and Running!")
 
 
 def init_gpio(GPIO_tree_sensor, GPIO_tree_ref, 
         GPIO_reservoir_sensor, GPIO_reservoir_ref,
-        GPIO_alarm, GPIO_pump):
+        GPIO_alarm, GPIO_pump) -> None:
 
     logger.debug("initializing GPIO")
 
@@ -35,7 +52,7 @@ def init_gpio(GPIO_tree_sensor, GPIO_tree_ref,
     GPIO.setup(GPIO_pump, GPIO.OUT, initial=GPIO.LOW)
 
 
-def check_water_level(GPIO_sensor, GPIO_ref):
+def check_water_level(GPIO_sensor, GPIO_ref) -> bool:
     # returns False if low water level is detected
     logger.debug("check water level: Sensor-Pin {}".format(GPIO_sensor))
 
@@ -49,7 +66,7 @@ def check_water_level(GPIO_sensor, GPIO_ref):
     return water_level
 
 
-def pump_water(GPIO_pump, duration_s):
+def pump_water(GPIO_pump, duration_s) -> None:
     logger.debug("pump water")
 
     GPIO.output(GPIO_pump, GPIO.HIGH)
@@ -57,7 +74,7 @@ def pump_water(GPIO_pump, duration_s):
     GPIO.output(GPIO_pump, GPIO.LOW)
 
 
-def check_off_time():
+def check_off_time() -> bool:
     # return False if current time is in off_time.
 
     current_time = datetime.datetime.now().time()
@@ -105,6 +122,7 @@ def water_watchdog(
 
         # check water level of reservoir
         if not check_water_level(GPIO_reservoir_sensor, GPIO_reservoir_ref):
+            broadcast("Waterlevel in Reservoir low!")
             if check_off_time():
                 alarm(GPIO_alarm)
             else:
@@ -117,6 +135,7 @@ def water_watchdog(
             if pump_ctr < 3:
                 pump_water(GPIO_pump, pump_duration)
             else: # don't activate pump more than 3 consecutive times
+                broadcast("Water in Tree-pot does not change! Tried to pump 3-times.")
                 alarm(GPIO_alarm, panic=True)
         else:
             pump_ctr = 0
@@ -171,4 +190,3 @@ if __name__ == "__main__":
 
         logger.debug("Terminating")
         GPIO.cleanup()
-
