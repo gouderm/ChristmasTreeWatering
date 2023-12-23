@@ -8,9 +8,9 @@ import os
 import logging
 import telepot
 import urllib.request
+import constants as c
 
 log_format = '%(asctime)s | %(message)s'
-TOKEN = "5923304712:AAFVclXSak_LEjg1N44drAxMaVdDaVOyOkQ"
 
 log_file_path = os.path.dirname(os.path.realpath(__file__)) + "/log.txt"
 logging.basicConfig(filename=log_file_path, format=log_format, filemode='a')
@@ -151,7 +151,7 @@ if __name__ == "__main__":
     logger.info("waiting for internet connection")
     wait_for_internet_connection()
     logger.info("connected to internet")
-    bot = telepot.Bot(TOKEN)
+    bot = telepot.Bot(c.TOKEN)
     ids = []
     for msg in bot.getUpdates():
         if (_id := msg.get("message",{}).get("chat",{}).get("id", None)) != None:
@@ -165,39 +165,32 @@ if __name__ == "__main__":
     try:
         GPIO.setmode(GPIO.BCM)
 
-        GPIO_tree_sensor = 2
-        GPIO_tree_ref = 4
-        GPIO_reservoir_sensor = 27
-        GPIO_reservoir_ref = 17
-        GPIO_alarm = 3
-        GPIO_pump = 22
-
         init_gpio(
-                GPIO_tree_sensor,
-                GPIO_tree_ref, 
-                GPIO_reservoir_sensor,
-                GPIO_reservoir_ref,
-                GPIO_alarm,
-                GPIO_pump
+                c.GPIO_tree_sensor,
+                c.GPIO_tree_ref, 
+                c.GPIO_reservoir_sensor,
+                c.GPIO_reservoir_ref,
+                c.GPIO_alarm,
+                c.GPIO_pump
             )
 
         # startup beep
         logger.debug("Startup Beep")
         for _ in range(5):
-            GPIO.output(GPIO_alarm, GPIO.LOW)
+            GPIO.output(c.GPIO_alarm, GPIO.LOW)
             time.sleep(0.05)
-            GPIO.output(GPIO_alarm, GPIO.HIGH)
+            GPIO.output(c.GPIO_alarm, GPIO.HIGH)
             time.sleep(0.05)
 
         time.sleep(2)
 
         water_watchdog(
-                GPIO_tree_sensor,
-                GPIO_tree_ref,
-                GPIO_reservoir_sensor,
-                GPIO_reservoir_ref,
-                GPIO_alarm,
-                GPIO_pump,
+                c.GPIO_tree_sensor,
+                c.GPIO_tree_ref,
+                c.GPIO_reservoir_sensor,
+                c.GPIO_reservoir_ref,
+                c.GPIO_alarm,
+                c.GPIO_pump,
                 pump_duration = 7,
                 telegram_bot = bot,
                 chat_ids = ids, 
